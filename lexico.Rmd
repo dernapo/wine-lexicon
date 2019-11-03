@@ -154,7 +154,7 @@ palabras %>%
 
 
 
-## Visualizar las palabras más comunes - sensaciones táctiles
+## Visualizar las palabras más comunes
 
 ```{r}
 palabras %>% 
@@ -175,7 +175,7 @@ palabras %>%
 ```
 
 
-## Visualizar Frequencia Relativa - sensaciones táctiles
+## Visualizar Frequencia Relativa
 
 ```{r frequency_visualization_chunk, error=FALSE, warning=FALSE}
 
@@ -191,7 +191,7 @@ palabras %>%
 ```
 
 
-## Visualizar tf-idf - sensaciones táctiles
+## Visualizar tf-idf
 
 Calcular el coeficiente tf_idf nos ayudará a encontrar el vocabulario especíco de cada tipo de consumidor. Que palabras usan unos que los otros casi nunca usan.
 

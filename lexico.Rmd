@@ -240,7 +240,7 @@ Usaremos Consine Similarity para calcular los ángulos entre los vectores de pal
 ```{r}
 palabras_ancho <- dcast(palabras, 
                         sensacion + palabra ~ tipo, 
-                        value.var="tf_idf",
+                        value.var="n",
                         fill = 0L)
 
 palabras_ancho%>% 
@@ -267,8 +267,8 @@ ggplot(data = result, aes(x=var1, y=var2, fill=value)) +
   geom_text(aes(var1, var2, label = round(value, 3)), color = "black", size = 4) +
   theme(legend.position= "none")+
   labs(x="", y="",
-       subtitle = "Método: Cosine Similarity sobre coeficiente tf-idf",
-       title = "Expertos y Comerciales usan vocabulario similar \ny distinto al de los consumidores")
+       subtitle = "Método: Cosine Similarity sobre vector de palabras usadas",
+       title = "El vocabulario de los Expertos es más similar al de los Comerciales \nque al de los consumidores")
   
 ```
 

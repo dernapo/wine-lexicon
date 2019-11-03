@@ -23,6 +23,7 @@ library("ggplot2")
 library("SnowballC")
 library("viridis")
 library("rmarkdown")
+library("stringr")
 
 theme_set(theme_bw())
 ```
@@ -63,6 +64,40 @@ lexico$tipo <- factor(lexico$tipo, levels = c("consumidores", "comercial", "expe
 
 ```
 
+Creamos palabras que no aportan valor "stop words"
+Que luego eliminaremos cuando hagamos el análisis
+```{r}
+
+stop_words_espanolas <- rbind(data.frame(word = c("si", "mas", "deja", "nose"), stringsAsFactors = FALSE),
+                               data.frame(word = tm::stopwords("spanish"), stringsAsFactors = FALSE))
+
+
+```
+
+Ajustamos algunos errores gramaticales
+
+```{r}
+
+lexico[, tactiles:= stringr::str_replace_all(string = tactiles,
+                pattern = "sensacion",
+                replacement = "sensación")]
+
+lexico[, boca:= stringr::str_replace_all(string = boca,
+                pattern = "sensacion",
+                replacement = "sensación")]
+
+lexico[, tactiles:= stringr::str_replace_all(string = tactiles,
+                pattern = "sensaciones",
+                replacement = "sensación")]
+
+lexico[, boca:= stringr::str_replace_all(string = boca,
+                pattern = "sensaciones",
+                replacement = "sensación")]
+
+```
+
+
+
 # Léxico sensaciones táctiles
 ## Calcular la frequencia de cada palabra
 
@@ -91,8 +126,6 @@ palabras_por_tipo %>%
 Quitar palabras comunes que no aportan valor, por ejemplo: "y" o "la"
 
 ```{r, warning=FALSE}
-stop_words_espanolas <- rbind(data.frame(word = c("si", "mas", "deja")),
-                               data.frame(word = tm::stopwords("spanish")))
 
 palabras_por_tipo %>% 
   anti_join(stop_words_espanolas, by = "word") -> palabras_por_tipo
@@ -189,9 +222,6 @@ palabras_por_tipo_boca <- left_join(palabras_por_tipo_boca, palabras_todos_boca,
 palabras_por_tipo_boca %>% 
   paged_table()
 
-
-
-
 ```
 
 ## Palabras comunes - sensaciones en boca
@@ -199,9 +229,6 @@ palabras_por_tipo_boca %>%
 Quitar palabras comunes que no aportan valor, por ejemplo: "y" o "la"
 
 ```{r, warning=FALSE}
-stop_words_espanolas <- bind_rows(data_frame(word = c("si", "mas", "deja")),
-                               data_frame(word = tm::stopwords("spanish")))
-
 palabras_por_tipo_boca %>% 
   anti_join(stop_words_espanolas, by = "word") -> palabras_por_tipo_boca
 ```

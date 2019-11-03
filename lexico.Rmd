@@ -1,0 +1,282 @@
+---
+title: "Analisis del léxico del vino de Comerciales, Expertos y Consumidores"
+author: "Javier Sáenz Navajas"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    code_folding: "hide"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("data.table")
+library("here")
+library("dplyr")
+library("tidytext")
+library("ggplot2")
+library("SnowballC")
+library("viridis")
+library("rmarkdown")
+
+theme_set(theme_bw())
+```
+
+# Objetivo
+
+Entender los diferentes léxicos usados por Comerciales, Expertos y Consumidores para sensaciones táctiles y de boca
+```{r load_data_chunk}
+
+lexico <- data.table::fread(here::here("data", "lexico.tsv"),
+                            select = 1:4,
+                            encoding = 'UTF-8')
+data.table::setnames(lexico, 
+         old = colnames(lexico),
+         new = c("tipo", "id", "tactiles", "boca"))
+```
+
+# Preparar los datos
+
+Un primer vistazo
+
+```{r visualize_chunk, echo=FALSE}
+
+lexico[1:10] %>%
+  paged_table()
+```
+Pasamos el texto a minúsculas
+```{r cleanup_chunk}
+lexico[, tipo := tolower(tipo)]
+lexico[, tactiles := tolower(tactiles)]
+lexico[, boca := tolower(boca)]
+
+lexico[1:10] %>%
+  paged_table()
+
+
+lexico$tipo <- factor(lexico$tipo, levels = c("consumidores", "comercial", "experto"))
+
+```
+
+# Léxico sensaciones táctiles
+## Calcular la frequencia de cada palabra
+
+```{r}
+
+palabras_por_tipo <- lexico %>%
+  unnest_tokens(word, tactiles) %>%
+  count(tipo, word, sort = TRUE)
+
+palabras_todos <- palabras_por_tipo %>% 
+  group_by(tipo) %>% 
+  summarize(total = sum(n))
+
+palabras_por_tipo <- left_join(palabras_por_tipo, palabras_todos, by = "tipo")
+
+palabras_por_tipo %>%
+  paged_table()
+
+
+
+
+```
+
+## Palabras comunes - sensaciones táctiles
+
+Quitar palabras comunes que no aportan valor, por ejemplo: "y" o "la"
+
+```{r, warning=FALSE}
+stop_words_espanolas <- rbind(data.frame(word = c("si", "mas", "deja")),
+                               data.frame(word = tm::stopwords("spanish")))
+
+palabras_por_tipo %>% 
+  anti_join(stop_words_espanolas, by = "word") -> palabras_por_tipo
+```
+
+
+## Visualizar las palabras más comunes - sensaciones táctiles
+
+```{r}
+palabras_por_tipo %>% 
+  arrange(desc(n)) %>%
+  group_by(tipo) %>% 
+  top_n(15, n) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x= word, y = n, fill = tipo)) +
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~tipo, ncol = 3) +
+  coord_flip()  +
+  labs(x="palabras", y="frequencia", title="sensaciones táctiles") +
+  scale_fill_viridis_d()
+```
+
+
+## Visualizar Frequencia Relativa - sensaciones táctiles
+
+```{r frequency_visualization_chunk, error=FALSE, warning=FALSE}
+
+palabras_por_tipo %>% 
+  ggplot(aes(n/total, fill = tipo)) +
+  geom_histogram(show.legend = FALSE, bins = 30) +
+  #xlim(NA, 0.0009) +
+  facet_wrap(~tipo, ncol = 3) +
+  labs(x="Frequencia relativa",
+       y= "Número de veces",
+       title = "Número de veces que aparece una palabra con una frequencia relativa dada") +
+  scale_fill_viridis_d()
+
+```
+
+
+```{r}
+
+palabras_por_tipo <- palabras_por_tipo %>%
+  bind_tf_idf(word, tipo, n)
+
+palabras_por_tipo %>%
+  select(-total) %>%
+  arrange(desc(tf_idf)) %>% 
+  paged_table()
+
+
+```
+## Visualizar tf-idf - sensaciones táctiles
+
+```{r}
+palabras_por_tipo %>%
+  arrange(desc(tf_idf)) %>%
+  #mutate(word = factor(word, levels = rev(unique(word)))) %>% 
+  group_by(tipo) %>% 
+  top_n(15, wt = tf_idf) %>% 
+  slice(1:15) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, tf_idf)) %>%
+  ggplot(aes(word, tf_idf, fill = tipo)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "", 
+       y = "tf-idf", 
+       title = "Léxico especifico de sensaciones táctiles por tipo de consumidor", 
+       subtitle = "Basado en análisis tf-idf sobre 463 consumidores",
+       caption = "") +
+  facet_wrap(~tipo, ncol = 3, scales = "free") +
+  coord_flip() +
+  scale_fill_viridis_d() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Léxico sensaciones en boca 
+
+## Calcular la frequencia de cada palabra
+
+```{r}
+
+palabras_por_tipo_boca <- lexico %>%
+  unnest_tokens(word, boca) %>%
+  count(tipo, word, sort = TRUE)
+
+palabras_todos_boca <- palabras_por_tipo_boca %>% 
+  group_by(tipo) %>% 
+  summarize(total = sum(n))
+
+palabras_por_tipo_boca <- left_join(palabras_por_tipo_boca, palabras_todos_boca, by = "tipo")
+
+palabras_por_tipo_boca %>% 
+  paged_table()
+
+
+
+
+```
+
+## Palabras comunes - sensaciones en boca
+
+Quitar palabras comunes que no aportan valor, por ejemplo: "y" o "la"
+
+```{r, warning=FALSE}
+stop_words_espanolas <- bind_rows(data_frame(word = c("si", "mas", "deja")),
+                               data_frame(word = tm::stopwords("spanish")))
+
+palabras_por_tipo_boca %>% 
+  anti_join(stop_words_espanolas, by = "word") -> palabras_por_tipo_boca
+```
+
+
+
+## Visualizar las palabras más comunes - sensaciones en boca
+
+```{r}
+palabras_por_tipo_boca %>% 
+  arrange(desc(n)) %>%
+  group_by(tipo) %>% 
+  top_n(15, n) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(x= word, y = n, fill = tipo)) +
+  geom_col(show.legend = FALSE) + 
+  facet_wrap(~tipo, ncol = 3) +
+  coord_flip()  +
+  labs(x="palabras", y="frequencia", title="Palabras más comunes - Sensaciones en boca") +
+  scale_fill_viridis_d()
+```
+
+
+## Visualizar Frequencia Relativa - sensaciones en boca
+
+```{r boca_frequency_visualization_chunk, error=FALSE, warning=FALSE}
+
+palabras_por_tipo_boca %>% 
+  ggplot(aes(n/total, fill = tipo)) +
+  geom_histogram(show.legend = FALSE, bins = 30) +
+  #xlim(NA, 0.0009) +
+  facet_wrap(~tipo, ncol = 3) +
+  labs(x="Frequencia relativa",
+       y= "Número de veces",
+       title = "Número de veces que aparece una palabra con una frequencia relativa dada",
+       subtitle = "Sensaciones en boca") +
+  scale_fill_viridis_d()
+
+```
+
+
+```{r}
+
+palabras_por_tipo_boca <- palabras_por_tipo_boca %>%
+  bind_tf_idf(word, tipo, n)
+
+palabras_por_tipo_boca %>%
+  select(-total) %>%
+  arrange(desc(tf_idf)) %>% 
+  paged_table()
+
+
+```
+## Visualizar tf-idf - sensaciones en boca
+
+```{r}
+palabras_por_tipo_boca %>%
+  arrange(desc(tf_idf)) %>%
+  #mutate(word = factor(word, levels = rev(unique(word)))) %>% 
+  group_by(tipo) %>% 
+  top_n(15, wt = tf_idf) %>% 
+  slice(1:15) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, tf_idf)) %>%
+  ggplot(aes(word, tf_idf, fill = tipo)) +
+  geom_col(show.legend = FALSE) +
+  labs(x = "", 
+       y = "tf-idf", 
+       title = "Léxico especifico de sensaciones en boca por tipo de consumidor", 
+       subtitle = "Basado en análisis tf-idf sobre 463 consumidores",
+       caption = "") +
+  facet_wrap(~tipo, ncol = 3, scales = "free") +
+  coord_flip() +
+  scale_fill_viridis_d() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+

@@ -120,6 +120,9 @@ stop_words_espanolas <- rbind(data.frame(palabra = c("si", "mas", "nose"), strin
 palabras %>% 
   anti_join(stop_words_espanolas, by = "palabra") -> palabras
 
+# guardar datos
+fwrite(palabras, here::here("output", "palabras.csv"))
+
 ```
 
 
